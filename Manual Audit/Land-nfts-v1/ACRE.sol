@@ -42,7 +42,9 @@ contract ATLACRE is ERC721A, Ownable {
     }
 
     function setBaseURI (string memory newUri) public onlyOwner {
+        //@audit-issue missing validation for empty string
         baseUri = newUri;
+        //@audit-info missing event emission
     }
 
     function mint(uint256 quantity) public {

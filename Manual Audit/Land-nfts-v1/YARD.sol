@@ -41,6 +41,7 @@ contract ATLYARD is ERC721A, Ownable {
     }
 
     function setBaseURI (string memory newUri) public onlyOwner {
+        //@audit-issue missing validation for empty string
         baseUri = newUri;
     }
 
