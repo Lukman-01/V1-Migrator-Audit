@@ -48,7 +48,6 @@ contract ATLACRE is ERC721A, Ownable {
     }
 
     function mint(uint256 quantity) public {
-        //@audit-issue critical everybody can mint token
         require(_currentBatch.quantity > 0, "No more tokens left to mint");
         require(_currentBatch.active, "Current Batch is not active");
         //@audit-info tautology, quantity already been checked
@@ -59,14 +58,14 @@ contract ATLACRE is ERC721A, Ownable {
         if (!freeParticipant[msg.sender]) {
             //require msg.sender is passed into _pay
             require(_pay(msg.sender, quantity), "Must pay minting fee");
-            //@audit-issue _pay does not have robust error handling, and its return value is blindly trusted.
+            //@audit-issue _pay does not have error handling, and its return value is blindly trusted.
         }
 
         // check enough left to mint
         _currentBatch.quantity = (_currentBatch.quantity - quantity);
         _safeMint(msg.sender, quantity);
 
-        //@audit-info Gas optimization use custom error instead of require 
+        //@audit-info Gas optimization: use custom error instead of require statements
     }
 
     function _pay(address payee, uint256 quantity)
@@ -94,7 +93,7 @@ contract ATLACRE is ERC721A, Ownable {
         //@audit-issue no check for token contract existence
         IERC20 token = IERC20(_paymentToken);
         token.transferFrom(payee, _feeCollector, _txFeeAmount);
-        //@audit-issue return value of transferFrom not checked
+        //@audit-issue return value of transferFrom not checked, that means this function will always return true.
         return true;
     }
 
