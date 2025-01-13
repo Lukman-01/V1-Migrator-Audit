@@ -51,7 +51,196 @@ To run the unit tests for the smart contracts, follow the steps below:
 
 ## Audit Video
 The video documenting the entire audit process has been uploaded to YouTube. You can view the video via the following link:
-[Audit Process Video](https://youtu.be/tXv3ft3-r9s)
+[Audit Process Video](https://youtu.be/oyDUckd_EyA)
+
+
+### Very Important Recomendation.
+
+**Optimize all three contracts(Acre, Plot and Yard) by creating a common abstract base contract for shared functionality. This reduces redundancy, improves maintainability, and centralizes the shared logic.**
+
+---
+
+### **1. Abstract Base Contract**
+Create an abstract contract that includes common functionality and storage variables. All three contracts can inherit this base contract and add any specific features they need.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+import "./ERC721A.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+abstract contract BaseATL is ERC721A, Ownable {
+    struct Batch {
+        uint256 quantity;
+        uint256 price;
+        bool active;
+    }
+
+    address public paymentToken;
+    address public feeCollector;
+    Batch public currentBatch;
+    uint256 public txFeeAmount;
+    uint256 public maxBuyAmount = 10;
+
+    mapping(address => bool) public freeParticipantControllers;
+    mapping(address => bool) public freeParticipant;
+
+    event NewBatchCreated(uint256 batchStartIndex);
+
+    constructor(string memory name, string memory symbol, address _paymentToken) ERC721A(name, symbol) {
+        paymentToken = _paymentToken;
+        feeCollector = msg.sender;
+    }
+
+    function _baseURI() internal view virtual override returns (string memory);
+
+    function setBaseURI(string memory newUri) public virtual onlyOwner {
+        // Implement in child contract
+    }
+
+    function mint(uint256 quantity) public virtual {
+        require(currentBatch.quantity > 0, "No more tokens left to mint");
+        require(currentBatch.active, "Current Batch is not active");
+        require(quantity > 0, "Quantity must be greater than zero");
+        require(quantity <= maxBuyAmount || msg.sender == owner(), "Max buy amount limit hit");
+
+        if (!freeParticipant[msg.sender]) {
+            require(_pay(msg.sender, quantity), "Must pay minting fee");
+        }
+
+        currentBatch.quantity -= quantity;
+        _safeMint(msg.sender, quantity);
+    }
+
+    function _pay(address payee, uint256 quantity) internal virtual returns (bool) {
+        IERC20 token = IERC20(paymentToken);
+        token.transferFrom(payee, feeCollector, currentBatch.price * quantity);
+        return true;
+    }
+
+    function setCurrentBatch(uint256 quantity, uint256 price, bool active) public onlyOwner {
+        require(currentBatch.quantity == 0, "Current batch not finished.");
+        currentBatch = Batch(quantity, price, active);
+        emit NewBatchCreated(_currentIndex);
+    }
+
+    function setCurrentBatchActive(bool active) public onlyOwner {
+        currentBatch.active = active;
+    }
+
+    function setTxFee(uint256 amount) public onlyOwner {
+        txFeeAmount = amount;
+    }
+
+    function setPaymentToken(address _token) public onlyOwner {
+        paymentToken = _token;
+    }
+
+    function setFeeCollector(address collector) public onlyOwner {
+        feeCollector = collector;
+    }
+
+    function setFreeParticipantController(address controller, bool allow) public onlyOwner {
+        freeParticipantControllers[controller] = allow;
+    }
+
+    function setFreeParticipant(address participant, bool free) public onlyOwner {
+        freeParticipant[participant] = free;
+    }
+}
+```
+
+---
+
+### **2. Child Contracts**
+Now, each child contract will inherit from `BaseATL` and implement any unique features or overrides.
+
+#### **ATLYARD**
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+import "./BaseATL.sol";
+
+contract ATLYARD is BaseATL {
+    string private baseUri = "https://sidekickfinance.mypinata.cloud/ipfs/...";
+
+    constructor(address paymentToken) BaseATL("ATL Yard", "yATL", paymentToken) {}
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseUri;
+    }
+
+    function setBaseURI(string memory newUri) public override onlyOwner {
+        baseUri = newUri;
+    }
+}
+```
+
+---
+
+#### **ATLPLOT**
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+import "./BaseATL.sol";
+
+contract ATLPLOT is BaseATL {
+    string private baseUri = "https://sidekickfinance.mypinata.cloud/ipfs/...";
+
+    constructor(address paymentToken) BaseATL("ATL Plot", "pATL", paymentToken) {}
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseUri;
+    }
+
+    function setBaseURI(string memory newUri) public override onlyOwner {
+        baseUri = newUri;
+    }
+}
+```
+
+---
+
+#### **ATLACRE**
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+import "./BaseATL.sol";
+
+contract ATLACRE is BaseATL {
+    string private baseUri = "https://sidekickfinance.mypinata.cloud/ipfs/...";
+    uint256 public batchStartTokenId;
+
+    constructor(address paymentToken) BaseATL("ATL Acre", "aATL", paymentToken) {}
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseUri;
+    }
+
+    function setBaseURI(string memory newUri) public override onlyOwner {
+        baseUri = newUri;
+    }
+
+    function setBatchStartTokenId(uint256 startId) public onlyOwner {
+        batchStartTokenId = startId;
+    }
+}
+```
+
+---
+
+### **Advantages of This Approach**
+1. **Code Reuse**: Centralizes shared functionality in `BaseATL`, reducing duplication.
+2. **Maintainability**: Updates to shared logic only need to be made in one place.
+3. **Customization**: Allows child contracts to override or extend functionality as needed.
+4. **Readability**: Keeps child contracts concise and focused on their unique logic.
+
+---
 
 ## Conclusion
 This repository provides a thorough audit of the provided smart contracts, with detailed insights into vulnerabilities and recommendations for mitigation. The tools and frameworks used ensure a high level of accuracy, while the documentation is intended to provide clear guidance on addressing the identified issues.
