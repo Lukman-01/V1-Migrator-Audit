@@ -45,15 +45,11 @@ describe("Migrator Contract", function () {
     mockYardV1 = await MockNFT.deploy("YardV1", "YV1");
     mockYardV2 = await MockNFT.deploy("YardV2", "YV2");
 
-    // Deploy Migrator
     const Migrator = await ethers.getContractFactory("Migrator");
     migrator = await upgrades.deployProxy(Migrator, []) as Migrator;
-    //await migrator.deployed();
 
-    // Grant signer role
     await migrator.grantRole(SIGNER_ROLE, signer.address);
 
-    // Set up requirements
     await migrator.connect(signer).setERC721Requirements(
       mockAcreV1.address,
       mockYardV1.address,
@@ -69,7 +65,6 @@ describe("Migrator Contract", function () {
       PRICE
     );
 
-    // Mint some tokens to user
     await mockTokenV1.mint(user.address, ethers.parseEther("1000"));
     await mockTokenV2.mint(migrator, ethers.parseEther("1000"));
   });
@@ -123,12 +118,12 @@ describe("Migrator Contract", function () {
 
   describe("NFT Migration", function () {
     beforeEach(async function () {
-      // Mint NFTs to user
+      
       await mockAcreV1.mint(user.address, 3);
       await mockPlotV1.mint(user.address, 2);
       await mockYardV1.mint(user.address, 1);
 
-      // Approve migrator
+       
       await mockAcreV1.connect(user).setApprovalForAll(migrator, true);
       await mockPlotV1.connect(user).setApprovalForAll(migrator, true);
       await mockYardV1.connect(user).setApprovalForAll(migrator, true);
@@ -147,7 +142,7 @@ describe("Migrator Contract", function () {
         )
       ).to.emit(migrator, "NFTMigrationCompleted");
 
-      // Verify ownership of new NFTs
+       
       for (let i = 0; i < 3; i++) {
         expect(await mockAcreV2.ownerOf(i)).to.equal(user.address);
       }
@@ -166,7 +161,7 @@ describe("Migrator Contract", function () {
 
   describe("Batch Migration", function () {
     beforeEach(async function () {
-      // Mint 200 NFTs to user
+       
       for (let i = 0; i < 200; i++) {
         await mockAcreV1.mint(user.address, 1);
       }
@@ -176,7 +171,7 @@ describe("Migrator Contract", function () {
     it("Should handle large batch migrations", async function () {
       const tokenIds = Array.from({ length: 200 }, (_, i) => i);
       
-      // Split into smaller batches
+       
       const batchSize = 50;
       for (let i = 0; i < tokenIds.length; i += batchSize) {
         const batch = tokenIds.slice(i, i + batchSize);
@@ -184,7 +179,6 @@ describe("Migrator Contract", function () {
           migrator.connect(user).migrateAllAsset(batch, [], [])
         ).to.emit(migrator, "NFTMigrationCompleted");
 
-        // Verify ownership of new NFTs
         for (let j = 0; j < batch.length; j++) {
           expect(await mockAcreV2.ownerOf(i + j)).to.equal(user.address);
         }
