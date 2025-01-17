@@ -53,6 +53,8 @@ To run the unit tests for the smart contracts, follow the steps below:
 The video documenting the entire audit process has been uploaded to YouTube. You can view the video via the following link:
 [Audit Process Video](https://youtu.be/oyDUckd_EyA)
 
+[Migrator Audit Video](https://youtu.be/qFxqrmh3zNE)
+
 
 ### Very Important Recomendation.
 
@@ -232,14 +234,7 @@ contract ATLACRE is BaseATL {
 }
 ```
 
----
-
-### **Advantages of This Approach**
-1. **Code Reuse**: Centralizes shared functionality in `BaseATL`, reducing duplication.
-2. **Maintainability**: Updates to shared logic only need to be made in one place.
-3. **Customization**: Allows child contracts to override or extend functionality as needed.
-4. **Readability**: Keeps child contracts concise and focused on their unique logic.
-
+### **3. Use Diamond Contract for Shared Logic and Customization**
 ---
 
 ## Conclusion
